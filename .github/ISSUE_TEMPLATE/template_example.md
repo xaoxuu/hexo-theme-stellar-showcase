@@ -14,3 +14,5 @@ assignees: ''
     "screenshot": ""
 }
 ```
+<!-- avatar 的显示尺寸是 28x28 压缩至 84x84 就足够了 -->
+<!-- screenshot 的显示尺寸是 150x100 压缩至 450x300 就足够了 -->
