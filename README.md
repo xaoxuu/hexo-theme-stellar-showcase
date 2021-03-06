@@ -1,25 +1,10 @@
-# issues-api
+# Examples
 
-测试地址： https://issues-api.vercel.app/xaoxuu
+[Create a new issue](https://github.com/volantis-x/examples/issues/new/choose) and submit it, then your blog will be displayed here:
 
-## 使用方法
+https://xaoxuu.com/wiki/stellar/#examples
 
-[![Deploy to Vercel](https://camo.githubusercontent.com/f209ca5cc3af7dd930b6bfc55b3d7b6a5fde1aff/68747470733a2f2f76657263656c2e636f6d2f627574746f6e)](https://vercel.com/import/project?template=https://github.com/xaoxuu/issues-api)
 
-1. 复制整个仓库，名为 `friends`，然后修改 `_config.yml` 中的信息。
-2. 新建 issue 进行测试
-3. 访问 `https://issues-api.vercel.app/yourname`
+[创建一个 issue](https://github.com/volantis-x/examples/issues/new/choose) 并提交，然后您的博客链接将会出现在这里：
 
-如果仓库为其他名称，例如 `examples`，那么需要指定仓库名：
-```
-https://issues-api.vercel.app/yourname/examples
-```
-
-如果仓库默认分支不是 `main`，那么需要指定分支：
-```
-https://issues-api.vercel.app/yourname/examples/master
-```
-
-## 感谢
-
-非常感谢 [@Zfour](https://github.com/Zfour) 的 python 代码和耐心指导！
+https://xaoxuu.com/wiki/stellar/#examples
