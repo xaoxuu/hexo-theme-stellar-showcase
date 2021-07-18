@@ -9,7 +9,7 @@ assignees: ''
 ```json
 {
     "title": "",
-    "url": "",
+    "url": "https://",
     "avatar": "",
     "screenshot": ""
 }
