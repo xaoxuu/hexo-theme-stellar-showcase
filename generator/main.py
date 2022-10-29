@@ -1,35 +1,43 @@
 # -*- coding: utf-8 -*-
 # author: https://github.com/Zfour
-import requests
 from bs4 import BeautifulSoup
-import re
-import yaml
-from request_data import request
+import os
+import request
 import json
+import config
+
+version = 'v2'
+outputdir = version # 输出文件结构变化时，更新输出路径版本
+filename = 'data.json'
 
 data_pool = []
 
-def load_config():
-    f = open('_config.yml', 'r',encoding='utf-8')
-    ystr = f.read()
-    ymllist = yaml.load(ystr, Loader=yaml.FullLoader)
-    return ymllist
+
+def mkdir(path):
+    folder = os.path.exists(path)
+    if not folder:
+        os.makedirs(path)
+        print("create dir:", path)
+    else:
+        print("dir exists:", path)
+
 
 def github_issuse(data_pool):
     print('\n')
     print('------- github issues start ----------')
     baselink = 'https://github.com/'
-    config = load_config()
+    cfg = config.load()
+    filter = cfg['issues']
     try:
         for number in range(1, 100):
-            print(number)
-            if config['issues']['label']:
-                label_plus = '+label%3A' + config['issues']['label']
-            else:
-                label_plus = ''
-            github = request.get_data('https://github.com/' +
-                             config['issues']['repo'] +
-                             '/issues?q=is%3A' + config['issues']['state'] + str(label_plus) + '&page=' + str(number))
+            print('page:', number)
+            url = 'https://github.com/' + filter['repo'] + '/issues?page=' + str(number) + '&q=is%3Aopen'
+            if filter['label']:
+                url = url + '+label%3A' + filter['label']
+            if filter['sort']:
+                url = url + '+sort%3A' + filter['sort']
+            print('parse:', url)
+            github = request.get_data(url)
             soup = BeautifulSoup(github, 'html.parser')
             main_content = soup.find_all('div',{'aria-label': 'Issues'})
             linklist = main_content[0].find_all('a', {'class': 'Link--primary'})
@@ -56,8 +64,13 @@ def github_issuse(data_pool):
     print('\n')
 
 
-#友链规则
+# 友链规则
 github_issuse(data_pool)
-filename='generator/output/v1/data.json'
-with open(filename,'w',encoding='utf-8') as file_obj:
-   json.dump(data_pool,file_obj,ensure_ascii=False)
+mkdir(outputdir)
+full_path = outputdir + '/' + filename
+with open(full_path, 'w', encoding='utf-8') as file_obj:
+    data = {
+        'version': version,
+        'content': data_pool
+    }
+    json.dump(data, file_obj, ensure_ascii=False, indent=2)
