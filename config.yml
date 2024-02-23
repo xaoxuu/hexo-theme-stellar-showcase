@@ -6,5 +6,5 @@ request:
 # 要抓取的 issues 配置
 issues:
   repo: xaoxuu/hexo-theme-stellar-showcase # 仓库持有者/仓库名
-  label: example # 筛选具有 active 标签的 issue ，取消此项则会提取所有 open 状态的 issue
+  label: active # 筛选具有 active 标签的 issue ，取消此项则会提取所有 open 状态的 issue
   sort: # updated-desc # 排序，按最近更新，取消此项则按创建时间排序
