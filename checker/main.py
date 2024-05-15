@@ -104,6 +104,13 @@ def checker_url(item,header_ua_random=False):
 
       if len(result1) > 0 and len(result2) > 0:
           res['r'] = True
+          # <meta name="hexo-theme" content="https://github.com/xaoxuu/hexo-theme-stellar/tree/1.28.1" theme-name="Stellar" theme-version="1.28.1">
+          # 输出主题版本标签，例如 res['v'] = '1.28.1'
+          matchObj = re.match(r'(.*?) theme-version="(.*)"', data)
+          if matchObj:
+            theme_version = matchObj2.group(2)
+            print('theme_version:', theme_version)
+            res['v'] = theme_version
       else:
           res['r'] = False
           res['e'] = "NOT Stellar"
@@ -146,6 +153,9 @@ for item in data_pool:
             error_pool.append(item)
     else:
       print("OK")
+      if result['v']:
+        print("add label:", result['v'])
+        add_labels(item['id'], result['v'])
       if "NETWORK WARNING" in item['labels']:
           print("delete label NETWORK WARNING...")
           delete_labels(item['id'],"NETWORK WARNING")
