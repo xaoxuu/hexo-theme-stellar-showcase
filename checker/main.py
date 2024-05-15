@@ -80,12 +80,7 @@ pattern2 = re.compile(r'l_header|l_body')
 def checker_url(item,header_ua_random=False):
     res={}
     try:
-      print(item['id'])
-      print(item['url'])
-      # 85 老版本
-      if item['id'] == "85":
-        res['r'] = True
-        return res
+      print('check item:', item)
       data = request.get_data(item['url'],header_ua_random)
       if data == 'error::404':
         res['r'] = False
@@ -138,7 +133,6 @@ def delete_labels(issue_number,labels):
 print('------- checker start ----------')
 error_pool=[]
 for item in data_pool:
-    print(item)
     result = checker_url(item)
     if not result['r']:
         item['error'] = result['e']
@@ -153,7 +147,7 @@ for item in data_pool:
             error_pool.append(item)
     else:
       print("OK")
-      if result['v']:
+      if 'v' in result:
         print("add label:", result['v'])
         add_labels(item['id'], result['v'])
       if "NETWORK WARNING" in item['labels']:
