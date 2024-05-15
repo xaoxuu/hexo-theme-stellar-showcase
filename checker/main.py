@@ -129,6 +129,20 @@ def delete_labels(issue_number,labels):
   except Exception as e:
     print(e)
 
+def add_labels(issue_number,labels):
+  try:
+    config = load_config()
+    url='https://api.github.com/repos/'+config['issues']['repo']+'/issues/'+issue_number+'/labels'
+    data= labels
+    handlers={
+      "Authorization": "token "+sys.argv[1],
+      "Accept": "application/vnd.github.v3+json"
+    }
+    r=requests.post(url=url,data=data,headers=handlers)
+    # print(r.text.encode("gbk", 'ignore').decode('gbk', 'ignore'))
+  except Exception as e:
+    print(e)
+
 
 print('------- checker start ----------')
 error_pool=[]
@@ -158,20 +172,6 @@ for item in data_pool:
 
 print('------- checker end ----------')
 print('\n')
-
-def add_labels(issue_number,labels):
-  try:
-    config = load_config()
-    url='https://api.github.com/repos/'+config['issues']['repo']+'/issues/'+issue_number+'/labels'
-    data= labels
-    handlers={
-      "Authorization": "token "+sys.argv[1],
-      "Accept": "application/vnd.github.v3+json"
-    }
-    r=requests.post(url=url,data=data,headers=handlers)
-    # print(r.text.encode("gbk", 'ignore').decode('gbk', 'ignore'))
-  except Exception as e:
-    print(e)
 
 def Create_an_issue_comment_invalid(issue_number,invalid_data):
   try:
