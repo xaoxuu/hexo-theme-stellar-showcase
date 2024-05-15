@@ -148,8 +148,9 @@ for item in data_pool:
     else:
       print("OK", result)
       if 'v' in result:
-        print("add label:", result['v'])
-        add_labels(item['id'], result['v'])
+        theme_version = result['v']
+        print("add label:", theme_version)
+        add_labels(item['id'], '["' + theme_version + '"]')
       if "NETWORK WARNING" in item['labels']:
           print("delete label NETWORK WARNING...")
           delete_labels(item['id'],"NETWORK WARNING")
