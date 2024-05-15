@@ -82,7 +82,6 @@ def checker_url(item,header_ua_random=False):
     try:
       print('check item:', item)
       data = request.get_data(item['url'],header_ua_random)
-      print('data:', data)
       if data == 'error::404':
         res['r'] = False
         res['e'] = "error::404"
