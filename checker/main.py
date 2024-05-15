@@ -102,9 +102,9 @@ def checker_url(item,header_ua_random=False):
           res['r'] = True
           # <meta name="hexo-theme" content="https://github.com/xaoxuu/hexo-theme-stellar/tree/1.28.1" theme-name="Stellar" theme-version="1.28.1">
           # 输出主题版本标签，例如 res['v'] = '1.28.1'
-          matchObj = re.match(r'(.*?) theme-version="(.*)"', data)
+          matchObj = re.match(r'(.*?) theme-version="(.*)"', data, re.S|re.I)
           if matchObj:
-            theme_version = matchObj2.group(2)
+            theme_version = matchObj.group(2)
             print('theme_version:', theme_version)
             res['v'] = theme_version
       else:
