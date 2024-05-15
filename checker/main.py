@@ -146,7 +146,7 @@ for item in data_pool:
         else:
             error_pool.append(item)
     else:
-      print("OK")
+      print("OK", result)
       if 'v' in result:
         print("add label:", result['v'])
         add_labels(item['id'], result['v'])
