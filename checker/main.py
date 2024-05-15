@@ -201,20 +201,20 @@ print('------- error data start ----------')
 for item in error_pool:
     print(item)
     if item['error'] == "NOT Stellar":
-        add_labels(item['id'],'["Maybe NOT Stellar WARNING"]')
+        add_labels(item['id'],'["Maybe NOT Stellar"]')
         Create_an_issue_comment_invalid(item['id'],item['data'])
-        Close_an_issue(item['id'])
+        # Close_an_issue(item['id'])
     if item['error'] == "NETWORK ERROR":
         add_labels(item['id'],'["NETWORK WARNING"]')
         if item['url'] == "https://" or item['url'] == "":
             add_labels(item['id'],'["invalid"]')
             Create_an_issue_comment_invalid(item['id'],"无效 URL")
-            Close_an_issue(item['id'])
+            # Close_an_issue(item['id'])
     if item['error'] == "error::404":
         add_labels(item['id'],'["NETWORK WARNING"]')
         add_labels(item['id'],'["invalid"]')
         Create_an_issue_comment_invalid(item['id'],"<Response [404]>")
-        Close_an_issue(item['id'])
+        # Close_an_issue(item['id'])
 print('------- error data end ----------')
 print('\n')
 
