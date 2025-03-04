@@ -72,7 +72,7 @@ async function processData() {
       let labels = [];
       switch (result.status) {
         case SITE_STATUS.STELLAR:
-          labels = [`Stellar ${result.version}`];
+          labels = [`${result.version}`];
           break;
         case SITE_STATUS.NOT_STELLAR:
           labels = [ISSUE_LABELS.NOT_STELLAR];
