@@ -72,15 +72,21 @@ async function processData() {
       let labels = [];
       switch (result.status) {
         case SITE_STATUS.STELLAR:
+          // 如果是 Stellar 主题，只保留版本号标签
           labels = [`${result.version}`];
           break;
         case SITE_STATUS.NOT_STELLAR:
-          labels = [ISSUE_LABELS.NOT_STELLAR];
+          // 保留原有标签，添加 NOT_STELLAR 标签
+          labels = [...(item.labels || []), ISSUE_LABELS.NOT_STELLAR];
           break;
         case SITE_STATUS.ERROR:
-          labels = [ISSUE_LABELS.NETWORK_ERROR];
+          // 保留原有标签，添加 NETWORK_ERROR 标签
+          labels = [...(item.labels || []), ISSUE_LABELS.NETWORK_ERROR];
           break;
       }
+      
+      // 去重标签
+      labels = [...new Set(labels)];
       
       await updateIssueLabels(owner, repo, item.issue_number, labels);
     }
