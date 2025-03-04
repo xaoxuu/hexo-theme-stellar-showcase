@@ -12,6 +12,8 @@ jobs:
     permissions:
       issues: write
       actions: write
+      contents: write
+      repository_dispatch: write
     steps:
       - uses: actions/checkout@v3
         with:
