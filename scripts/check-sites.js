@@ -77,11 +77,11 @@ async function processData() {
           break;
         case SITE_STATUS.NOT_STELLAR:
           // 保留原有标签，添加 NOT_STELLAR 标签
-          labels = [...(item.labels || []), ISSUE_LABELS.NOT_STELLAR];
+          labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NOT_STELLAR];
           break;
         case SITE_STATUS.ERROR:
           // 保留原有标签，添加 NETWORK_ERROR 标签
-          labels = [...(item.labels || []), ISSUE_LABELS.NETWORK_ERROR];
+          labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NETWORK_ERROR];
           break;
       }
       
