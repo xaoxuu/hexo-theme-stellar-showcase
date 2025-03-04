@@ -24,7 +24,7 @@ async function checkSite(url) {
       const themeVersion = themeMetaTag.attr('theme-version') || (() => {
         const content = themeMetaTag.attr('content');
         if (content) {
-          const versionMatch = content.match(/\/tree\/([\d.]+)$/);
+          const versionMatch = content.match(/\/tree\/([d.]+)$/);
           return versionMatch ? versionMatch[1] : null;
         }
         return null;
@@ -58,6 +58,31 @@ async function updateIssueLabels(owner, repo, issueNumber, labels) {
   }
 }
 
+async function getOpenIssues() {
+  const config = loadConfig('site_checker');
+  const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+  
+  try {
+    const { data: issues } = await octokit.issues.listForRepo({
+      owner,
+      repo,
+      state: 'open'
+    });
+    
+    return issues.map(issue => ({
+      url: issue.body?.match(/"url":\s*"([^"]+)"/)?.at(1),
+      issue_number: issue.number,
+      labels: issue.labels.map(label => ({
+        name: label.name,
+        color: label.color
+      }))
+    })).filter(item => item.url);
+  } catch (error) {
+    handleError(error, 'Error fetching issues');
+    throw error;
+  }
+}
+
 async function processData() {
   const config = loadConfig('site_checker');
   if (!config.enabled) {
@@ -67,10 +92,8 @@ async function processData() {
 
   try {
     const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-    const dataPath = path.join(process.cwd(), PATHS.DATA);
-    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-    const validSites = validateSiteData(data);
-
+    const validSites = await getOpenIssues();
+    
     for (const item of validSites) {
       logger('info', `Checking site: ${item.url}`);
       const checkSiteWithRetry = () => checkSite(item.url);
