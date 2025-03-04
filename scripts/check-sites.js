@@ -21,8 +21,8 @@ async function checkSite(url) {
     
     if (themeMetaTag.length > 0) {
       const themeName = themeMetaTag.attr('theme-name');
+      const content = themeMetaTag.attr('content');
       const themeVersion = themeMetaTag.attr('theme-version') || (() => {
-        const content = themeMetaTag.attr('content');
         if (content) {
           const versionMatch = content.match(/\/tree\/([\d.]+)(?:\/|$)/);
           return versionMatch ? versionMatch[1] : null;
@@ -30,7 +30,7 @@ async function checkSite(url) {
         return null;
       })();
       
-      if (themeName === API.THEME_NAME) {
+      if (themeName === API.THEME_NAME || (content && content.includes('xaoxuu/hexo-theme-stellar') && themeVersion)) {
         return { status: SITE_STATUS.STELLAR, version: themeVersion };
       } else {
         return { status: SITE_STATUS.NOT_STELLAR };
