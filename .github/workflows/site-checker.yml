@@ -28,3 +28,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node scripts/check-sites.js
+      # 解析 issues 并生成 data.json
+      - name: Parse Issues and Generate Data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/parse-issues.js
+      - name: Setup Git Config
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+      - name: Commit and Push to output branch
+        run: |
+          git fetch origin output || true
+          git checkout -B output
+          git add v2/data.json
+          git commit -m "Update data.json from issues" || echo "No changes to commit"
+          git push -f origin output
