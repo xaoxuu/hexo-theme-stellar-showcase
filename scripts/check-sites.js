@@ -1,10 +1,8 @@
 import { Octokit } from '@octokit/rest';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import fs from 'fs';
-import path from 'path';
-import { loadConfig, logger, handleError, withRetry, validateSiteData } from './utils.js';
-import { SITE_STATUS, ISSUE_LABELS, API, PATHS } from './constants.js';
+import { loadConfig, logger, handleError, withRetry } from './utils.js';
+import { SITE_STATUS, ISSUE_LABELS, API } from './constants.js';
 
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN
@@ -128,7 +126,7 @@ async function processData() {
     const checkPromises = validSites.map(item => {
       return pool.add(async () => {
         try {
-          logger('info', `Checking site: ${item.url}`);
+          logger('info', `Checking #${issueNumber} site: ${item.url}`);
           const checkSiteWithRetry = () => checkSite(item.url);
           const result = await withRetry(checkSiteWithRetry, config.retry_times);
           
