@@ -93,32 +93,42 @@ async function processData() {
   try {
     const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
     const validSites = await getOpenIssues();
+    let errors = [];
     
     for (const item of validSites) {
-      logger('info', `Checking site: ${item.url}`);
-      const checkSiteWithRetry = () => checkSite(item.url);
-      const result = await withRetry(checkSiteWithRetry, config.retry_times);
-      
-      let labels = [];
-      switch (result.status) {
-        case SITE_STATUS.STELLAR:
-          // 如果是 Stellar 主题，只保留版本号标签
-          labels = [`${result.version}`];
-          break;
-        case SITE_STATUS.NOT_STELLAR:
-          // 保留原有标签，添加 NOT_STELLAR 标签
-          labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NOT_STELLAR];
-          break;
-        case SITE_STATUS.ERROR:
-          // 保留原有标签，添加 NETWORK_ERROR 标签
-          labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NETWORK_ERROR];
-          break;
+      try {
+        logger('info', `Checking site: ${item.url}`);
+        const checkSiteWithRetry = () => checkSite(item.url);
+        const result = await withRetry(checkSiteWithRetry, config.retry_times);
+        
+        let labels = [];
+        switch (result.status) {
+          case SITE_STATUS.STELLAR:
+            labels = [`${result.version}`];
+            break;
+          case SITE_STATUS.NOT_STELLAR:
+            labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NOT_STELLAR];
+            break;
+          case SITE_STATUS.ERROR:
+            labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NETWORK_ERROR];
+            break;
+        }
+        
+        labels = [...new Set(labels)];
+        await updateIssueLabels(owner, repo, item.issue_number, labels);
+      } catch (error) {
+        errors.push({ issue: item.issue_number, url: item.url, error: error.message });
+        logger('error', `Error processing site ${item.url} (Issue #${item.issue_number}): ${error.message}`);
+        continue;
       }
-      
-      // 去重标签
-      labels = [...new Set(labels)];
-      
-      await updateIssueLabels(owner, repo, item.issue_number, labels);
+    }
+
+    if (errors.length > 0) {
+      logger('warn', `Completed with ${errors.length} errors:`);
+      errors.forEach(err => {
+        logger('warn', `Issue #${err.issue} (${err.url}): ${err.error}`);
+      });
+      process.exit(1);
     }
   } catch (error) {
     handleError(error, 'Error processing data');
