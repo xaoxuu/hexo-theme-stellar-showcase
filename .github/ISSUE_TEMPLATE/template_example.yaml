@@ -1,6 +1,6 @@
 name: 示例博客
 description: 自助添加示例博客。
-labels: ['active']
+labels: ['']
 body:
   - type: checkboxes
     id: checks

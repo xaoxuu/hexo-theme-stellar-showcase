@@ -1,0 +1,40 @@
+name: Issue Parser
+
+on:
+  push:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  parse-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: |
+          npm install
+      - name: Parse Issues and Generate Data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/parse-issues.js
+      - name: Setup Git Config
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+      - name: Commit and Push to output branch
+        run: |
+          git fetch origin output || true
+          git checkout -B output
+          git add v2/data.json
+          git commit -m "Update data.json from issues" || echo "No changes to commit"
+          git push -f origin output
