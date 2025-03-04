@@ -126,7 +126,7 @@ async function processData() {
     const checkPromises = validSites.map(item => {
       return pool.add(async () => {
         try {
-          logger('info', `Checking #${issueNumber} site: ${item.url}`);
+          logger('info', `Checking #${item.issue_number} site: ${item.url}`);
           const checkSiteWithRetry = () => checkSite(item.url);
           const result = await withRetry(checkSiteWithRetry, config.retry_times);
           
