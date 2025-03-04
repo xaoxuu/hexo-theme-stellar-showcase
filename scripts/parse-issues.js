@@ -93,7 +93,23 @@ async function parseIssues() {
       content: []
     };
 
-    for (const issue of issues) {
+    // 对 issues 进行版本号排序
+    const sortedIssues = issues.sort((a, b) => {
+      const getVersionLabel = (issue) => {
+        const versionLabel = issue.labels.find(label => /^\d+\.\d+\.\d+$/.test(label.name));
+        return versionLabel ? versionLabel.name : '0.0.0';
+      };
+      const versionA = getVersionLabel(a).split('.').map(Number);
+      const versionB = getVersionLabel(b).split('.').map(Number);
+      for (let i = 0; i < 3; i++) {
+        if (versionA[i] !== versionB[i]) {
+          return versionB[i] - versionA[i];
+        }
+      }
+      return 0;
+    });
+
+    for (const issue of sortedIssues) {
       const processedData = await processIssue(issue, config);
       if (processedData) {
         parsedData.content.push(processedData);
