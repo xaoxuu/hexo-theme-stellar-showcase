@@ -24,7 +24,7 @@ async function checkSite(url) {
       const themeVersion = themeMetaTag.attr('theme-version') || (() => {
         const content = themeMetaTag.attr('content');
         if (content) {
-          const versionMatch = content.match(/\/tree\/([\d.]+)/);
+          const versionMatch = content.match(/\/tree\/([\d.]+)(?:\/|$)/);
           return versionMatch ? versionMatch[1] : null;
         }
         return null;
