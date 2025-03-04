@@ -147,7 +147,7 @@ async function processData() {
           await updateIssueLabels(owner, repo, item.issue_number, labels);
         } catch (error) {
           errors.push({ issue: item.issue_number, url: item.url, error: error.message });
-          logger('error', `Error processing site ${item.url} (Issue #${item.issue_number}): ${error.message}`);
+          logger('error', `#${item.issue_number} Error processing site ${item.url} (Issue #${item.issue_number}): ${error.message}`);
         }
       });
     });
