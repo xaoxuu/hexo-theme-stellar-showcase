@@ -63,11 +63,15 @@ async function getOpenIssues() {
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
   
   try {
-    const { data: issues } = await octokit.issues.listForRepo({
+    const issues = [];
+    for await (const response of octokit.paginate.iterator(octokit.issues.listForRepo, {
       owner,
       repo,
-      state: 'open'
-    });
+      state: 'open',
+      per_page: 100
+    })) {
+      issues.push(...response.data);
+    }
     
     return issues.map(issue => ({
       url: issue.body?.match(/"url":\s*"([^"]+)"/)?.at(1),

@@ -16,7 +16,8 @@ async function getIssues() {
   const params = {
     owner,
     repo,
-    state: 'open'
+    state: 'open',
+    per_page: 100
   };
 
   // 添加排序
@@ -30,7 +31,10 @@ async function getIssues() {
   }
 
   try {
-    const { data: issues } = await octokit.issues.listForRepo(params);
+    const issues = [];
+    for await (const response of octokit.paginate.iterator(octokit.issues.listForRepo, params)) {
+      issues.push(...response.data);
+    }
     
     // 过滤黑名单标签的 issues
     const blacklistLabels = config.exclude || [];
