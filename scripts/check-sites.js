@@ -83,6 +83,30 @@ async function getOpenIssues() {
   }
 }
 
+class ConcurrencyPool {
+  constructor(maxConcurrency) {
+    this.maxConcurrency = maxConcurrency;
+    this.running = 0;
+    this.queue = [];
+  }
+
+  async add(fn) {
+    if (this.running >= this.maxConcurrency) {
+      await new Promise(resolve => this.queue.push(resolve));
+    }
+    this.running++;
+    try {
+      return await fn();
+    } finally {
+      this.running--;
+      if (this.queue.length > 0) {
+        const next = this.queue.shift();
+        next();
+      }
+    }
+  }
+}
+
 async function processData() {
   const config = loadConfig('site_checker');
   if (!config.enabled) {
@@ -95,33 +119,39 @@ async function processData() {
     const validSites = await getOpenIssues();
     let errors = [];
     
-    for (const item of validSites) {
-      try {
-        logger('info', `Checking site: ${item.url}`);
-        const checkSiteWithRetry = () => checkSite(item.url);
-        const result = await withRetry(checkSiteWithRetry, config.retry_times);
-        
-        let labels = [];
-        switch (result.status) {
-          case SITE_STATUS.STELLAR:
-            labels = [`${result.version}`];
-            break;
-          case SITE_STATUS.NOT_STELLAR:
-            labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NOT_STELLAR];
-            break;
-          case SITE_STATUS.ERROR:
-            labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NETWORK_ERROR];
-            break;
+    // 创建并发控制池，最大并发数为 5
+    const pool = new ConcurrencyPool(5);
+    const checkPromises = validSites.map(item => {
+      return pool.add(async () => {
+        try {
+          logger('info', `Checking site: ${item.url}`);
+          const checkSiteWithRetry = () => checkSite(item.url);
+          const result = await withRetry(checkSiteWithRetry, config.retry_times);
+          
+          let labels = [];
+          switch (result.status) {
+            case SITE_STATUS.STELLAR:
+              labels = [`${result.version}`];
+              break;
+            case SITE_STATUS.NOT_STELLAR:
+              labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NOT_STELLAR];
+              break;
+            case SITE_STATUS.ERROR:
+              labels = [...(item.labels.map(label => label.name) || []), ISSUE_LABELS.NETWORK_ERROR];
+              break;
+          }
+          
+          labels = [...new Set(labels)];
+          await updateIssueLabels(owner, repo, item.issue_number, labels);
+        } catch (error) {
+          errors.push({ issue: item.issue_number, url: item.url, error: error.message });
+          logger('error', `Error processing site ${item.url} (Issue #${item.issue_number}): ${error.message}`);
         }
-        
-        labels = [...new Set(labels)];
-        await updateIssueLabels(owner, repo, item.issue_number, labels);
-      } catch (error) {
-        errors.push({ issue: item.issue_number, url: item.url, error: error.message });
-        logger('error', `Error processing site ${item.url} (Issue #${item.issue_number}): ${error.message}`);
-        continue;
-      }
-    }
+      });
+    });
+
+    // 等待所有检查任务完成
+    await Promise.all(checkPromises);
 
     if (errors.length > 0) {
       logger('warn', `Completed with ${errors.length} errors:`);
