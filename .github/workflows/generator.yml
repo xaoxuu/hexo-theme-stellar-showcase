@@ -4,8 +4,6 @@ on:
   push:
   issues:
     types: [opened, edited]
-  repository_dispatch:
-    types: [trigger-generator]
 
 jobs:
   generate:

@@ -2,6 +2,8 @@ export const config = {
   // 系统常量配置
   // 包含网站状态码、数据文件路径等基础系统配置
   base: {
+    // 调试仓库地址（线上使用请设置为空）
+    debug_repo: 'xaoxuu/hexo-theme-stellar-showcase',
     // 网站状态枚举值
     site_status: {
       valid: 'valid',
@@ -23,8 +25,6 @@ export const config = {
   generator: {
     // 是否启用生成器
     enabled: true,
-    // 目标仓库地址（格式：用户名/仓库名）
-    repo: 'xaoxuu/hexo-theme-stellar-showcase',
     // Issue排序方式
     // updated-desc: 按最后更新时间降序
     sort: 'updated-desc',

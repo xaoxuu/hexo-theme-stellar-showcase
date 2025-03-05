@@ -1,39 +1,37 @@
 import { Octokit } from '@octokit/rest';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { loadConfig, logger, handleError, withRetry } from './utils.js';
+import { config } from '../config.js';
+import { logger, handleError, withRetry } from './utils.js';
 
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN
 });
 
 async function checkSite(url) {
-  const config = loadConfig('theme_checker');
-  const baseConfig = loadConfig('base');
-  const requestConfig = loadConfig('request');
   try {
     // 动态延时策略
-    const { min, max } = requestConfig.delay;
+    const { min, max } = config.request.delay;
     const delay = Math.floor(Math.random() * (max - min)) + min;
     await new Promise(resolve => setTimeout(resolve, delay));
 
     // 随机选择 User-Agent
-    const userAgents = requestConfig.user_agents;
+    const userAgents = config.request.user_agents;
     const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
     
     // 构建请求头
     const headers = {
       'User-Agent': randomUserAgent,
-      ...requestConfig.headers
+      ...config.request.headers
     };
 
     const response = await axios.get(url, {
-      timeout: requestConfig.timeout,
+      timeout: config.request.timeout,
       headers: headers,
       validateStatus: status => status < 500 // 允许除500以外的状态码
     });
     const $ = cheerio.load(response.data);
-    const themeMetaTag = $(config.meta_tag);
+    const themeMetaTag = $(config.theme_checker.meta_tag);
     
     // 通用的版本号匹配函数
     const extractVersion = (content) => {
@@ -47,26 +45,26 @@ async function checkSite(url) {
     };
     
     if (themeMetaTag.length > 0) {
-      const themeName = themeMetaTag.attr(config.name_attr);
-      const content = themeMetaTag.attr(config.content_attr);
-      const themeVersion = themeMetaTag.attr(config.version_attr) || extractVersion(content);
+      const themeName = themeMetaTag.attr(config.theme_checker.name_attr);
+      const content = themeMetaTag.attr(config.theme_checker.content_attr);
+      const themeVersion = themeMetaTag.attr(config.theme_checker.version_attr) || extractVersion(content);
       
-      if (themeName === config.theme_name || (content && themeVersion)) {
-        return { status: baseConfig.site_status.valid, version: themeVersion };
+      if (themeName === config.theme_checker.theme_name || (content && themeVersion)) {
+        return { status: config.base.site_status.valid, version: themeVersion };
       }
     }
     
     // 尝试从备选meta标签中解析版本号
-    const altThemeMetaTag = $(`meta[name="${config.theme_name}"]`);
+    const altThemeMetaTag = $(`meta[name="${config.theme_checker.theme_name}"]`);
     if (altThemeMetaTag.length > 0) {
       const content = altThemeMetaTag.attr('content');
       const version = extractVersion(content);
       if (version) {
-        return { status: baseConfig.site_status.valid, version };
+        return { status: config.base.site_status.valid, version };
       }
     }
     
-    return { status: baseConfig.site_status.invalid };
+    return { status: config.base.site_status.invalid };
   } catch (error) {
     // 针对特定错误类型进行处理
     if (error.response) {
@@ -77,7 +75,7 @@ async function checkSite(url) {
       }
     }
     handleError(error, `Error checking site ${url}`);
-    return { status: baseConfig.site_status.error };
+    return { status: config.base.site_status.error };
   }
 }
 
@@ -96,8 +94,7 @@ async function updateIssueLabels(owner, repo, issueNumber, labels) {
 }
 
 async function getIssues() {
-  const [owner, repo] = (loadConfig('generator').repo || process.env.GITHUB_REPOSITORY).split('/');
-  const config = loadConfig('theme_checker');
+  const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
   
   try {
     const issues = [];
@@ -113,13 +110,13 @@ async function getIssues() {
     // 过滤掉包含 exclude_labels 中定义的标签的 Issue
     const filteredIssues = issues.filter(issue => {
       const issueLabels = issue.labels.map(label => label.name);
-      return !config.exclude_labels.some(excludeLabel => issueLabels.includes(excludeLabel));
+      return !config.theme_checker.exclude_labels.some(excludeLabel => issueLabels.includes(excludeLabel));
     });
 
     // 根据 include_keyword 过滤 Issue
     const keywordFilteredIssues = filteredIssues.filter(issue => {
-      if (!config.include_keyword) return true;
-      return issue.body?.includes(config.include_keyword);
+      if (!config.theme_checker.include_keyword) return true;
+      return issue.body?.includes(config.theme_checker.include_keyword);
     });
     
     return keywordFilteredIssues.map(issue => ({
@@ -161,15 +158,13 @@ class ConcurrencyPool {
 }
 
 async function processData() {
-  const config = loadConfig('theme_checker');
-  const baseConfig = loadConfig('base');
-  if (!config.enabled) {
+  if (!config.theme_checker.enabled) {
     logger('info', 'Site checker is disabled in config');
     return;
   }
 
   try {
-    const [owner, repo] = (loadConfig('generator').repo || process.env.GITHUB_REPOSITORY).split('/');
+    const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
     const validSites = await getIssues();
     let errors = [];
     
@@ -180,18 +175,18 @@ async function processData() {
         try {
           logger('info', `Checking #${item.issue_number} site: ${item.url}`);
           const checkSiteWithRetry = () => checkSite(item.url);
-          const result = await withRetry(checkSiteWithRetry, config.retry_times);
+          const result = await withRetry(checkSiteWithRetry, config.theme_checker.retry_times);
           
           let labels = [];
           switch (result.status) {
-            case baseConfig.site_status.valid:
+            case config.base.site_status.valid:
               labels = [`${result.version}`];
               break;
-            case baseConfig.site_status.invalid:
-              labels = [...(item.labels.map(label => label.name) || []), config.error_labels.invalid];
+            case config.base.site_status.invalid:
+              labels = [...(item.labels.map(label => label.name) || []), config.theme_checker.error_labels.invalid];
               break;
-            case baseConfig.site_status.error:
-              labels = [...(item.labels.map(label => label.name) || []), config.error_labels.unreachable];
+            case config.base.site_status.error:
+              labels = [...(item.labels.map(label => label.name) || []), config.theme_checker.error_labels.unreachable];
               break;
           }
           

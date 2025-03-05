@@ -1,10 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { config } from '../config.js';
-
-export function loadConfig(section) {
-  return config[section];
-}
 
 export function logger(level, message, ...args) {
   const timestamp = new Date().toISOString();

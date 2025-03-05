@@ -1,7 +1,7 @@
 import { Octokit } from '@octokit/rest';
-import fs from 'fs';
 import path from 'path';
-import { loadConfig, logger, handleError, writeJsonToFile } from './utils.js';
+import { config } from '../config.js';
+import { logger, handleError, writeJsonToFile } from './utils.js';
 import fetch from 'node-fetch';
 
 const octokit = new Octokit({
@@ -10,8 +10,7 @@ const octokit = new Octokit({
 });
 
 async function getIssues() {
-  const config = loadConfig('generator');
-  const [owner, repo] = (config.repo || process.env.GITHUB_REPOSITORY).split('/');
+  const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
   const params = {
     owner,
     repo,
@@ -20,7 +19,7 @@ async function getIssues() {
   };
 
   // 添加排序
-  if (config.sort === 'updated-desc') {
+  if (config.generator.sort === 'updated-desc') {
     params.sort = 'updated';
     params.direction = 'desc';
   } else {
@@ -36,12 +35,10 @@ async function getIssues() {
     }
     
     // 过滤黑名单标签的 issues
-    const themeCheckerConfig = loadConfig('theme_checker');
-    const linkCheckerConfig = loadConfig('link_checker');
     const blacklistLabels = [
-      ...(config.exclude_labels || []),
-      ...Object.values(themeCheckerConfig.error_labels || {}),
-      ...Object.values(linkCheckerConfig.error_labels || {})
+      ...(config.generator.exclude_labels || []),
+      ...Object.values(config.theme_checker.error_labels || {}),
+      ...Object.values(config.link_checker.error_labels || {})
     ];
     const filteredIssues = issues.filter(issue => {
       const issueLabels = issue.labels.map(label => label.name);
@@ -55,7 +52,7 @@ async function getIssues() {
   }
 }
 
-async function processIssue(issue, config) {
+async function processIssue(issue) {
   try {
     logger('info', `Processing issue #${issue.number}`);
     if (!issue.body) {
@@ -87,9 +84,7 @@ async function processIssue(issue, config) {
 }
 
 async function parseIssues() {
-  const config = loadConfig('generator');
-  const baseConfig = loadConfig('base');
-  if (!config.enabled) {
+  if (!config.generator.enabled) {
     logger('info', 'Issue parser is disabled in config');
     return;
   }
@@ -99,7 +94,7 @@ async function parseIssues() {
     logger('info', `Found ${issues.length} issues to process`);
 
     const parsedData = {
-      version: baseConfig.data_version,
+      version: config.base.data_version,
       content: []
     };
 
@@ -120,13 +115,13 @@ async function parseIssues() {
     });
 
     for (const issue of sortedIssues) {
-      const processedData = await processIssue(issue, config);
+      const processedData = await processIssue(issue);
       if (processedData) {
         parsedData.content.push(processedData);
       }
     }
 
-    const outputPath = path.join(process.cwd(), baseConfig.paths.data);
+    const outputPath = path.join(process.cwd(), config.base.paths.data);
     if (writeJsonToFile(outputPath, parsedData)) {
       logger('info', 'Successfully generated v2/data.json');
     }

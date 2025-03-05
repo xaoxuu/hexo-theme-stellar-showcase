@@ -1,7 +1,8 @@
 import { Octokit } from '@octokit/rest';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { loadConfig, logger, handleError, withRetry } from './utils.js';
+import { config } from '../config.js';
+import { logger, handleError, withRetry } from './utils.js';
 
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN
@@ -31,10 +32,10 @@ class ConcurrencyPool {
   }
 }
 
-async function checkLinkInPage(url, headers, requestConfig, targetLink) {
+async function checkLinkInPage(url, headers, targetLink) {
   logger('info', `Checking link in page: ${url}`);
   const response = await axios.get(url, {
-    timeout: requestConfig.timeout,
+    timeout: config.request.timeout,
     headers: headers,
     validateStatus: status => status < 500
   });
@@ -50,7 +51,7 @@ async function checkLinkInPage(url, headers, requestConfig, targetLink) {
 
 async function findFriendLinks(issueNumber) {
   logger('info', `find issue #${issueNumber}`);
-  const [owner, repo] = (loadConfig('generator').repo || process.env.GITHUB_REPOSITORY).split('/');
+  const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
   try {
     const issue = await octokit.issues.get({
       owner,
@@ -74,47 +75,43 @@ async function findFriendLinks(issueNumber) {
 
 async function checkSite(item) {
   const url = item.url;
-  const config = loadConfig('link_checker');
-  const requestConfig = loadConfig('request');
-  const baseConfig = loadConfig('base');
-
   try {
-    const { min, max } = requestConfig.delay;
+    const { min, max } = config.request.delay;
     const delay = Math.floor(Math.random() * (max - min)) + min;
     await new Promise(resolve => setTimeout(resolve, delay));
 
-    const userAgents = requestConfig.user_agents;
+    const userAgents = config.request.user_agents;
     const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
     const headers = {
       'User-Agent': randomUserAgent,
-      ...requestConfig.headers
+      ...config.request.headers
     };
 
     const response = await axios.get(url, {
-      timeout: requestConfig.timeout,
+      timeout: config.request.timeout,
       headers: headers,
       validateStatus: status => status < 500
     });
     const $ = cheerio.load(response.data);
 
     // 检查当前页面是否包含目标链接
-    if (await checkLinkInPage(url, headers, requestConfig, config.targetLink)) {
-      return { status: baseConfig.site_status.valid };
+    if (await checkLinkInPage(url, headers, config.link_checker.targetLink)) {
+      return { status: config.base.site_status.valid };
     }
     
     // 在友链页面中查找目标链接
     const friendLinks = await findFriendLinks($, url, item.issue_number);
     for (const friendLink of friendLinks) {
       try {
-        if (await checkLinkInPage(friendLink, headers, requestConfig, config.targetLink)) {
-          return { status: baseConfig.site_status.valid };
+        if (await checkLinkInPage(friendLink, headers, config.link_checker.targetLink)) {
+          return { status: config.base.site_status.valid };
         }
       } catch (error) {
         logger('warn', `Error checking friend page ${friendLink}: ${error.message}`);
       }
     }
 
-    return { status: baseConfig.site_status.invalid };
+    return { status: config.base.site_status.invalid };
   } catch (error) {
     if (error.response) {
       if (error.response.status === 403) {
@@ -124,7 +121,7 @@ async function checkSite(item) {
       }
     }
     handleError(error, `Error checking site ${url}`);
-    return { status: baseConfig.site_status.error };
+    return { status: config.base.site_status.error };
   }
 }
 
@@ -144,8 +141,7 @@ async function updateIssueLabels(owner, repo, issueNumber, labels) {
 }
 
 async function getIssues() {
-  const [owner, repo] = (loadConfig('generator').repo || process.env.GITHUB_REPOSITORY).split('/');
-  const config = loadConfig('link_checker');
+  const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
   
   try {
     const issues = [];
@@ -161,13 +157,13 @@ async function getIssues() {
     // 过滤掉包含 exclude_labels 中定义的标签的 Issue
     const filteredIssues = issues.filter(issue => {
       const issueLabels = issue.labels.map(label => label.name);
-      return !config.exclude_labels.some(excludeLabel => issueLabels.includes(excludeLabel));
+      return !config.link_checker.exclude_labels.some(excludeLabel => issueLabels.includes(excludeLabel));
     });
 
     // 根据 include_keyword 过滤 Issue
     const keywordFilteredIssues = filteredIssues.filter(issue => {
-      if (!config.include_keyword) return true;
-      return issue.body?.includes(config.include_keyword);
+      if (!config.link_checker.include_keyword) return true;
+      return issue.body?.includes(config.link_checker.include_keyword);
     });
     
     return keywordFilteredIssues.map(issue => ({
@@ -185,15 +181,13 @@ async function getIssues() {
 }
 
 async function processData() {
-  const config = loadConfig('link_checker');
-  const baseConfig = loadConfig('base');
-  if (!config.enabled) {
+  if (!config.link_checker.enabled) {
     logger('info', 'Link checker is disabled in config');
     return;
   }
 
   try {
-    const [owner, repo] = (loadConfig('generator').repo || process.env.GITHUB_REPOSITORY).split('/');
+    const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
     const validSites = await getIssues();
     let errors = [];
     
@@ -205,18 +199,18 @@ async function processData() {
           logger('info', `Checking #${item.issue_number} site: ${item.url}`);
           const result = await withRetry(
             () => checkSite(item),
-            config.retry_times
+            config.request.retry_times
           );
           
           let labels = [];
           switch (result.status) {
-            case baseConfig.site_status.valid:
+            case config.base.site_status.valid:
               break;
-            case baseConfig.site_status.invalid:
-              labels = [...(item.labels.map(label => label.name) || []), config.error_labels.invalid];
+            case config.base.site_status.invalid:
+              labels = [...(item.labels.map(label => label.name) || []), config.link_checker.error_labels.invalid];
               break;
-            case baseConfig.site_status.error:
-              labels = [...(item.labels.map(label => label.name) || []), config.error_labels.unreachable];
+            case config.base.site_status.error:
+              labels = [...(item.labels.map(label => label.name) || []), config.link_checker.error_labels.unreachable];
               break;
           }
           

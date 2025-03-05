@@ -5,8 +5,6 @@ on:
     - cron: '0 0 * * *'  # 每天运行一次
   watch:
     types: [started]  # 监听 star 事件
-  repository_dispatch:
-    types: [trigger-link-checker]
 
 jobs:
   check-sites:
