@@ -1,36 +1,7 @@
-import { Octokit } from '@octokit/rest';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { config } from '../config.js';
-import { logger, handleError, withRetry } from './utils.js';
-
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN
-});
-
-class ConcurrencyPool {
-  constructor(maxConcurrency) {
-    this.maxConcurrency = maxConcurrency;
-    this.running = 0;
-    this.queue = [];
-  }
-
-  async add(fn) {
-    if (this.running >= this.maxConcurrency) {
-      await new Promise(resolve => this.queue.push(resolve));
-    }
-    this.running++;
-    try {
-      return await fn();
-    } finally {
-      this.running--;
-      if (this.queue.length > 0) {
-        const next = this.queue.shift();
-        next();
-      }
-    }
-  }
-}
+import { logger, handleError, withRetry, ConcurrencyPool, IssueManager } from './utils.js';
 
 async function checkLinkInPage(url, headers, targetLink) {
   logger('info', `Checking link in page: ${url}`);
@@ -53,6 +24,7 @@ async function findFriendLinks(issueNumber) {
   logger('info', `find issue #${issueNumber}`);
   const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
   try {
+    const octokit = new IssueManager().octokit;
     const issue = await octokit.issues.get({
       owner,
       repo,
@@ -100,7 +72,7 @@ async function checkSite(item) {
     }
     
     // 在友链页面中查找目标链接
-    const friendLinks = await findFriendLinks($, url, item.issue_number);
+    const friendLinks = await findFriendLinks(item.issue_number);
     for (const friendLink of friendLinks) {
       try {
         if (await checkLinkInPage(friendLink, headers, config.link_checker.targetLink)) {
@@ -125,61 +97,6 @@ async function checkSite(item) {
   }
 }
 
-async function updateIssueLabels(owner, repo, issueNumber, labels) {
-  try {
-    logger('info', `try update labels for issue #${issueNumber}`, labels);
-    await octokit.issues.setLabels({
-      owner,
-      repo,
-      issue_number: issueNumber,
-      labels
-    });
-    logger('info', `Updated labels for issue #${issueNumber}`, labels);
-  } catch (error) {
-    handleError(error, `Error updating labels for issue #${issueNumber}`);
-  }
-}
-
-async function getIssues() {
-  const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
-  
-  try {
-    const issues = [];
-    for await (const response of octokit.paginate.iterator(octokit.issues.listForRepo, {
-      owner,
-      repo,
-      state: 'open',
-      per_page: 100
-    })) {
-      issues.push(...response.data);
-    }
-    
-    // 过滤掉包含 exclude_labels 中定义的标签的 Issue
-    const filteredIssues = issues.filter(issue => {
-      const issueLabels = issue.labels.map(label => label.name);
-      return !config.link_checker.exclude_labels.some(excludeLabel => issueLabels.includes(excludeLabel));
-    });
-
-    // 根据 include_keyword 过滤 Issue
-    const keywordFilteredIssues = filteredIssues.filter(issue => {
-      if (!config.link_checker.include_keyword) return true;
-      return issue.body?.includes(config.link_checker.include_keyword);
-    });
-    
-    return keywordFilteredIssues.map(issue => ({
-      url: issue.body?.match(/"url":\s*"([^"]+)"/)?.at(1),
-      issue_number: issue.number,
-      labels: issue.labels.map(label => ({
-        name: label.name,
-        color: label.color
-      }))
-    })).filter(item => item.url);
-  } catch (error) {
-    handleError(error, 'Error fetching issues');
-    throw error;
-  }
-}
-
 async function processData() {
   if (!config.link_checker.enabled) {
     logger('info', 'Link checker is disabled in config');
@@ -187,8 +104,8 @@ async function processData() {
   }
 
   try {
-    const [owner, repo] = (config.base.debug_repo || process.env.GITHUB_REPOSITORY).split('/');
-    const validSites = await getIssues();
+    const issueManager = new IssueManager();
+    const validSites = await issueManager.getIssues(config.link_checker);
     let errors = [];
     
     // 创建并发控制池，最大并发数为 5
@@ -215,7 +132,7 @@ async function processData() {
           }
           
           labels = [...new Set(labels)];
-          await updateIssueLabels(owner, repo, item.issue_number, labels);
+          await issueManager.updateIssueLabels(item.issue_number, labels);
         } catch (error) {
           errors.push({ issue: item.issue_number, url: item.url, error: error.message });
           logger('error', `#${item.issue_number} Error processing site ${item.url} (Issue #${item.issue_number}): ${error.message}`);
