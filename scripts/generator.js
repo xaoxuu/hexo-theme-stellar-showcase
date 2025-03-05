@@ -87,7 +87,7 @@ async function processIssue(issue, config) {
 }
 
 async function parseIssues() {
-  const config = loadConfig('issue_parser');
+  const config = loadConfig('generator');
   const baseConfig = loadConfig('base');
   if (!config.enabled) {
     logger('info', 'Issue parser is disabled in config');
