@@ -79,7 +79,7 @@ async function checkSite(item) {
           return { status: config.base.site_status.valid };
         }
       } catch (error) {
-        logger('warn', `Error checking friend page ${friendLink}: ${error.message}`);
+        logger('warn', `#${item.issue_number} Error checking friend page ${friendLink}: ${error.message}`);
       }
     }
 
@@ -92,7 +92,7 @@ async function checkSite(item) {
         logger('warn', `Rate limited for site ${url}, will retry later`);
       }
     }
-    handleError(error, `Error checking site ${url}`);
+    handleError(error, `#${item.issue_number} Error checking site ${url}`);
     return { status: config.base.site_status.error };
   }
 }
@@ -113,7 +113,7 @@ async function processData() {
     const checkPromises = validSites.map(item => {
       return pool.add(async () => {
         try {
-          logger('info', `Checking #${item.issue_number} site: ${item.url}`);
+          logger('info', `#${item.issue_number} Checking site: ${item.url}`);
           const result = await withRetry(
             () => checkSite(item),
             config.request.retry_times
@@ -135,7 +135,7 @@ async function processData() {
           await issueManager.updateIssueLabels(item.issue_number, labels);
         } catch (error) {
           errors.push({ issue: item.issue_number, url: item.url, error: error.message });
-          logger('error', `#${item.issue_number} Error processing site ${item.url} (Issue #${item.issue_number}): ${error.message}`);
+          logger('error', `#${item.issue_number} Error processing site ${item.url} ${error.message}`);
         }
       });
     });

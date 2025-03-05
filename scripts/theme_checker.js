@@ -3,7 +3,8 @@ import * as cheerio from 'cheerio';
 import { config } from '../config.js';
 import { logger, handleError, withRetry, ConcurrencyPool, IssueManager } from './utils.js';
 
-async function checkSite(url) {
+async function checkSite(item) {
+  const url = item.url;
   try {
     // 动态延时策略
     const { min, max } = config.request.delay;
@@ -69,7 +70,7 @@ async function checkSite(url) {
         logger('warn', `Rate limited for site ${url}, will retry later`);
       }
     }
-    handleError(error, `Error checking site ${url}`);
+    handleError(error, `#${item.issue_number} Error checking site ${url}`);
     return { status: config.base.site_status.error };
   }
 }
@@ -90,8 +91,8 @@ async function processData() {
     const checkPromises = validSites.map(item => {
       return pool.add(async () => {
         try {
-          logger('info', `Checking #${item.issue_number} site: ${item.url}`);
-          const checkSiteWithRetry = () => checkSite(item.url);
+          logger('info', `#${item.issue_number} Checking site: ${item.url}`);
+          const checkSiteWithRetry = () => checkSite(item);
           const result = await withRetry(checkSiteWithRetry, config.theme_checker.retry_times);
           
           let labels = [];
@@ -111,7 +112,7 @@ async function processData() {
           await issueManager.updateIssueLabels(item.issue_number, labels);
         } catch (error) {
           errors.push({ issue: item.issue_number, url: item.url, error: error.message });
-          logger('error', `#${item.issue_number} Error processing site ${item.url} (Issue #${item.issue_number}): ${error.message}`);
+          logger('error', `#${item.issue_number} Error processing site ${item.url} ${error.message}`);
         }
       });
     });
