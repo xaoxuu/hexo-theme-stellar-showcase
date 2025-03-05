@@ -2,7 +2,6 @@ import { Octokit } from '@octokit/rest';
 import fs from 'fs';
 import path from 'path';
 import { loadConfig, logger, handleError, writeJsonToFile } from './utils.js';
-import { PATHS } from './constants.js';
 import fetch from 'node-fetch';
 
 const octokit = new Octokit({
@@ -11,7 +10,7 @@ const octokit = new Octokit({
 });
 
 async function getIssues() {
-  const config = loadConfig('issue_parser');
+  const config = loadConfig('generator');
   const [owner, repo] = (config.repo || process.env.GITHUB_REPOSITORY).split('/');
   const params = {
     owner,
@@ -37,7 +36,13 @@ async function getIssues() {
     }
     
     // 过滤黑名单标签的 issues
-    const blacklistLabels = config.exclude || [];
+    const themeCheckerConfig = loadConfig('theme_checker');
+    const linkCheckerConfig = loadConfig('link_checker');
+    const blacklistLabels = [
+      ...(config.exclude_labels || []),
+      ...Object.values(themeCheckerConfig.error_labels || {}),
+      ...Object.values(linkCheckerConfig.error_labels || {})
+    ];
     const filteredIssues = issues.filter(issue => {
       const issueLabels = issue.labels.map(label => label.name);
       return !blacklistLabels.some(blacklistLabel => issueLabels.includes(blacklistLabel));
@@ -83,6 +88,7 @@ async function processIssue(issue, config) {
 
 async function parseIssues() {
   const config = loadConfig('issue_parser');
+  const baseConfig = loadConfig('base');
   if (!config.enabled) {
     logger('info', 'Issue parser is disabled in config');
     return;
@@ -93,7 +99,7 @@ async function parseIssues() {
     logger('info', `Found ${issues.length} issues to process`);
 
     const parsedData = {
-      version: 'v2',
+      version: baseConfig.data_version,
       content: []
     };
 
@@ -120,7 +126,7 @@ async function parseIssues() {
       }
     }
 
-    const outputPath = path.join(process.cwd(), PATHS.DATA);
+    const outputPath = path.join(process.cwd(), baseConfig.paths.data);
     if (writeJsonToFile(outputPath, parsedData)) {
       logger('info', 'Successfully generated v2/data.json');
     }

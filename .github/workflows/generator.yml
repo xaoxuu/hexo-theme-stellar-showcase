@@ -1,4 +1,4 @@
-name: Issue Parser
+name: Generator
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
     types: [opened, edited]
 
 jobs:
-  parse-issues:
+  generate:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -22,11 +22,11 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-      - name: Parse Issues and Generate Data
+      - name: Generate Data
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          node scripts/parse-issues.js
+          node scripts/generator.js
       - name: Setup Git Config
         run: |
           git config --global user.name 'github-actions[bot]'
@@ -35,6 +35,6 @@ jobs:
         run: |
           git fetch origin output || true
           git checkout -B output
-          git add v2/data.json
-          git commit -m "Update data.json from issues" || echo "No changes to commit"
+          git add $(node -p "require('./config.js').config.system.paths.data")
+          git commit -m "Update data from issues" || echo "No changes to commit"
           git push -f origin output

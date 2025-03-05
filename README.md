@@ -5,7 +5,7 @@
 ## 快速开始
 
 1. Fork 本仓库到你的 GitHub 账号下
-2. 修改 `config.yml` 文件中的配置信息
+2. 修改 `config.js` 文件中的配置信息
 3. 在你的仓库中创建一个新的 Issue 来提交网站信息
 
 ## 功能特点
@@ -15,23 +15,78 @@
 - 自动更新 Issue 标签以反映网站状态
 
 ## 配置说明
-### Issue 解析器配置
+### 生成器配置
 
-```yaml
-issue_parser:
-  enabled: true
-  repo: owner/repo-name  # 修改为你的仓库地址（格式：用户名/仓库名）
-  sort: updated-desc     # 排序方式（按最近更新）
-  exclude: ["审核中", "非Stellar站点", "无法访问"]  # 黑名单标签，包含这些标签的 issue 将被过滤
+```js
+// config.js
+export const config = {
+  generator: {
+    // 是否启用生成器
+    enabled: true,
+    // 目标仓库地址（格式：用户名/仓库名）
+    repo: 'xaoxuu/hexo-theme-stellar-showcase',
+    // Issue排序方式
+    // updated-desc: 按最后更新时间降序
+    sort: 'updated-desc',
+    // 需要排除的Issue标签
+    // 包含这些标签的Issue将不会被解析
+    exclude_labels: ["审核中"]
+  }
+}
 ```
 
-### 网站检查器配置
+### 主题检查器配置
 
-```yaml
-site_checker:
-  enabled: true
-  timeout: 10000    # 请求超时时间（毫秒）
-  retry_times: 3    # 重试次数
+```js
+// config.js
+export const config = {
+  theme_checker: {
+    // 是否启用网站主题检查
+    enabled: true,
+    // 包含这些关键词的Issue将被检查
+    include_keyword: '# 站点信息',
+    // 包含这些标签的Issue将不会被检查
+    exclude_labels: ["审核中"],
+    // 主题标识meta标签选择器
+    meta_tag: 'meta[name="hexo-theme"]',
+    // 期望的主题名称
+    theme_name: 'Stellar',
+    // 主题版本号属性名
+    version_attr: 'theme-version',
+    // 主题名称属性名
+    name_attr: 'theme-name',
+    // 主题内容属性名
+    content_attr: 'content',
+    // Issue标签配置
+    error_labels: {
+      invalid: '无效站点',
+      unreachable: '无法访问'
+    }
+  }
+}
+```
+
+### 链接检查器配置
+
+```js
+// config.js
+export const config = {
+  link_checker: {
+    // 是否启用链接检查
+    enabled: true,
+    // 包含这些关键词的Issue将被检查
+    include_keyword: '# 友链信息',
+    // 包含这些标签的Issue将不会被检查
+    exclude_labels: ["审核中"],
+    // 目标链接
+    link: 'https://xaoxuu.com',
+    // Issue标签配置
+    error_labels: {
+      invalid: '未添加友链',
+      unreachable: '无法访问'
+    }
+  }
+}
 ```
 
 ## 工作流程
@@ -52,8 +107,9 @@ site_checker:
 
 - `审核中`: 网站正在审核中
 - `x.x.x`: 网站正在使用的 Stellar 主题版本号
-- `非Stellar站点`: 网站未使用 Stellar 主题
+- `无效站点`: 网站未使用 Stellar 主题或已失效
 - `无法访问`: 网站无法访问
+- `未添加友链`: 网站未添加友链
 
 ## 许可证
 
