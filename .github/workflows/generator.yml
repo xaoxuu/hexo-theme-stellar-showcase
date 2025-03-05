@@ -37,6 +37,6 @@ jobs:
         run: |
           git fetch origin output || true
           git checkout -B output
-          git add $(node -p "require('./config.js').config.base.paths.data")
+          git add --all
           git commit -m "Update data from issues" || echo "No changes to commit"
           git push -f origin output
