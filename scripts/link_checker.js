@@ -10,6 +10,8 @@ async function checkLinkInPage(url, headers, targetLink) {
     headers: headers,
     validateStatus: status => status < 500
   });
+  // 等待10秒，让异步内容加载完成
+  await new Promise(resolve => setTimeout(resolve, 10000));
   const $ = cheerio.load(response.data);
   const links = $('a').map((_, el) => $(el).attr('href')).get();
   return links.some(link => {
@@ -47,6 +49,7 @@ async function findFriendLinks(issueNumber) {
 
 async function checkSite(item) {
   const url = item.url;
+  var checkResult = { valid: false };
   try {
     const { min, max } = config.request.delay;
     const delay = Math.floor(Math.random() * (max - min)) + min;
@@ -59,31 +62,31 @@ async function checkSite(item) {
       ...config.request.headers
     };
 
+    // 检查当前页面是否可访问
     const response = await axios.get(url, {
       timeout: config.request.timeout,
       headers: headers,
       validateStatus: status => status < 500
     });
-    const $ = cheerio.load(response.data);
-
-    // 检查当前页面是否包含目标链接
-    if (await checkLinkInPage(url, headers, config.link_checker.targetLink)) {
-      return { status: config.base.site_status.valid };
+    logger('info', `#${item.issue_number} Checked site: ${url} status: ${response.status}`);
+    switch (response.status) {
+      case 200:
+        checkResult.valid = true;
+        break;
+      case 301:
+        checkResult.valid = true;
+        checkResult.label = config.base.valid_labels.redirect;
+        break;
+      case 403:
+        // 如果状态码为 403，可能是由于反爬机制
+        checkResult.valid = true;
+        checkResult.label = config.base.valid_labels.unknown;
+        break;
+      default:
+        checkResult.valid = false;
+        checkResult.label = config.base.invalid_labels.unreachable;
+        break;
     }
-    
-    // 在友链页面中查找目标链接
-    const friendLinks = await findFriendLinks(item.issue_number);
-    for (const friendLink of friendLinks) {
-      try {
-        if (await checkLinkInPage(friendLink, headers, config.link_checker.targetLink)) {
-          return { status: config.base.site_status.valid };
-        }
-      } catch (error) {
-        logger('warn', `#${item.issue_number} Error checking friend page ${friendLink}: ${error.message}`);
-      }
-    }
-
-    return { status: config.base.site_status.invalid };
   } catch (error) {
     if (error.response) {
       if (error.response.status === 403) {
@@ -93,8 +96,10 @@ async function checkSite(item) {
       }
     }
     handleError(error, `#${item.issue_number} Error checking site ${url}`);
-    return { status: config.base.site_status.error };
+    checkResult.valid = false;
+    checkResult.label = config.base.invalid_labels.unreachable;
   }
+  return checkResult;
 }
 
 async function processData() {
@@ -105,7 +110,11 @@ async function processData() {
 
   try {
     const issueManager = new IssueManager();
-    const validSites = await issueManager.getIssues(config.link_checker);
+    const validSites = await issueManager.getIssues({
+      exclude_labels: config.link_checker.exclude_labels,
+      include_keyword: config.link_checker.include_keyword
+    });
+    logger('info', `Total sites to check: ${validSites.length}`);
     let errors = [];
     
     // 创建并发控制池，最大并发数为 5
@@ -120,19 +129,12 @@ async function processData() {
           );
           
           let labels = [];
-          switch (result.status) {
-            case config.base.site_status.valid:
-              break;
-            case config.base.site_status.invalid:
-              labels = [...(item.labels.map(label => label.name) || []), config.link_checker.error_labels.invalid];
-              break;
-            case config.base.site_status.error:
-              labels = [...(item.labels.map(label => label.name) || []), config.link_checker.error_labels.unreachable];
-              break;
+          if (result.label) {
+            labels = [...(item.labels.map(label => label.name) || []), result.label];
           }
-          
           labels = [...new Set(labels)];
           await issueManager.updateIssueLabels(item.issue_number, labels);
+          logger('info', `Finished checking site for issue #${item.issue_number}, result: ${JSON.stringify(result)}`);
         } catch (error) {
           errors.push({ issue: item.issue_number, url: item.url, error: error.message });
           logger('error', `#${item.issue_number} Error processing site ${item.url} ${error.message}`);

@@ -19,14 +19,8 @@ async function getIssues() {
   };
 
   // 添加排序
-  if (config.generator.sort === 'updated-desc') {
-    params.sort = 'updated';
-    params.direction = 'desc';
-  } else {
-    // 默认按创建时间排序
-    params.sort = 'created';
-    params.direction = 'desc';
-  }
+  params.sort = config.generator.sort;
+  params.direction = config.generator.direction;
 
   try {
     const issues = [];
@@ -37,9 +31,9 @@ async function getIssues() {
     // 过滤黑名单标签的 issues
     const blacklistLabels = [
       ...(config.generator.exclude_labels || []),
-      ...Object.values(config.theme_checker.error_labels || {}),
-      ...Object.values(config.link_checker.error_labels || {})
+      ...Object.values(config.base.invalid_labels || {})
     ];
+    logger('info', `Filtering issues with blacklist labels: ${blacklistLabels.join(', ')}`);
     const filteredIssues = issues.filter(issue => {
       const issueLabels = issue.labels.map(label => label.name);
       return !blacklistLabels.some(blacklistLabel => issueLabels.includes(blacklistLabel));
