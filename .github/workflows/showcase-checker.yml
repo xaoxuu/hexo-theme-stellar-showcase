@@ -29,6 +29,7 @@ jobs:
         with:
           checker: 'theme'
           exclude_labels: '审核中, 白名单' # 具有哪些标签的issue不进行检查
+          unreachable_label: '暂时失联'
           theme_checker_meta_tag: 'meta[theme-name="Stellar"]'
       # 检查完毕后重新生成一下JSON
       - name: Generate data.json
@@ -39,7 +40,7 @@ jobs:
           data_version: 'v2'
           data_path: '/v2/data.json'
           sort: 'version-desc' # created-desc/created-asc/updated-desc/updated-asc/version-desc
-          exclude_labels: '审核中, 风险网站, 无法访问, 无效主题' # 具有哪些标签的issue不生成到JSON中
+          exclude_labels: '审核中, 风险网站, 无效主题' # 具有哪些标签的issue不生成到JSON中
       - name: Setup Git Config
         run: |
           git config --global user.name 'github-actions[bot]'
