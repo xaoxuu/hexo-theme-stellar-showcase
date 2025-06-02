@@ -29,8 +29,9 @@ jobs:
         with:
           checker: 'theme'
           exclude_labels: '审核中, 白名单' # 具有哪些标签的issue不进行检查
-          unreachable_label: '暂时失联'
           theme_checker_meta_tag: 'meta[theme-name="Stellar"]'
+          unreachable_label: '暂时失联'
+          theme_checker_invalid_label: '无效主题'
       # 检查完毕后重新生成一下JSON
       - name: Generate data.json
         uses: xaoxuu/issues2json@main
