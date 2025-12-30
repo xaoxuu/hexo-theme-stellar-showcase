@@ -22,6 +22,16 @@ body:
       label: 站点信息
       description: 请在双引号中填写，不要修改格式。
       value: |
+        <!--
+        请在下方的 `JSON` 块中填写，字段说明：
+        - title: 友链标题
+        - url: 友链地址
+        - icon: 网站图标
+        - snapshot: 网站截图
+        - description: 一句话简介
+        - feed: 订阅地址（抓取并显示最新文章，没有 feed 地址时，排序会靠后）
+        -->
+        
         ```json
         {
             "title": "",
