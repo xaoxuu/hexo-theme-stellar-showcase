@@ -24,18 +24,17 @@ body:
       value: |
         <!--
         请在下方的 `JSON` 块中填写，字段说明：
-        - title: 友链标题
-        - url: 友链地址
+        - title: 网站标题
+        - url: 网站地址
         - icon: 网站图标
         - snapshot: 网站截图
         - description: 一句话简介
-        - feed: 订阅地址（抓取并显示最新文章，没有 feed 地址时，排序会靠后）
         -->
         
         ```json
         {
             "title": "",
-            "url": "",
+            "url": "https://",
             "icon": "",
             "snapshot": "",
             "description": ""
